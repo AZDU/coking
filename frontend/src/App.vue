@@ -125,7 +125,7 @@ export default {
       this.loading = true
       this.error = ''
       try {
-        const resp = await fetch('/recipes_clean.json')
+        const resp = await fetch('./recipes_clean.json')
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
         const recipes = await resp.json()
         this.recipes = Array.isArray(recipes) ? recipes : []
