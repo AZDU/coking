@@ -120,21 +120,16 @@ export default {
       _scrollY: 0,
     }
   },
-  computed: {
-    apiBase() {
-      return ''
-    },
-  },
   methods: {
     async load() {
       this.loading = true
       this.error = ''
       try {
-        const resp = await fetch(`/api/recipes`)
+        const resp = await fetch('/recipes_clean.json')
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-        const data = await resp.json()
-        this.count = data.count || 0
-        this.recipes = Array.isArray(data.recipes) ? data.recipes : []
+        const recipes = await resp.json()
+        this.recipes = Array.isArray(recipes) ? recipes : []
+        this.count = this.recipes.length
       } catch (e) {
         this.error = e && e.message ? e.message : String(e)
       } finally {
@@ -195,7 +190,6 @@ export default {
     },
 
     lockBodyScroll() {
-      // 记录当前滚动位置并锁定 body，防止弹层打开后左右滑动/回弹看到底层
       this._scrollY = window.scrollY || 0
       document.body.style.position = 'fixed'
       document.body.style.top = `-${this._scrollY}px`
@@ -235,7 +229,6 @@ export default {
 </script>
 
 <style scoped>
-/* 更生活化的浅色主题 */
 .page {
   min-height: 100vh;
   background: linear-gradient(180deg, #fff7ed 0%, #ffffff 40%, #fff 100%);
@@ -408,7 +401,6 @@ export default {
   color: rgba(31, 41, 55, 0.70);
 }
 
-/* 弹层：底部抽屉 + 锁定背景滚动 */
 .modal {
   position: fixed;
   inset: 0;
