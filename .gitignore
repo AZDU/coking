@@ -1,0 +1,18 @@
+# Node
+node_modules/
+
+# Build outputs
+frontend/dist/
+
+# Logs
+*.log
+scraper/parse.log
+
+# OS / Editor
+.DS_Store
+.vscode/
+
+# Python
+__pycache__/
+*.pyc
+

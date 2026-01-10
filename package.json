@@ -1,0 +1,9 @@
+{
+  "name": "cooking-app",
+  "private": true,
+  "scripts": {
+    "build": "npm --prefix frontend install && npm --prefix frontend run build && cp -f scraper/recipes_clean.json backend/recipes_clean.json",
+    "start": "npm --prefix backend install && node backend/index.js"
+  }
+}
+
