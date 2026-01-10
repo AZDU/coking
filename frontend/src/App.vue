@@ -1,5 +1,13 @@
 <template>
   <div class="page">
+    <div v-if="loading" class="loading-overlay" role="status" aria-live="polite">
+      <div class="loading-card">
+        <div class="spinner" aria-hidden="true"></div>
+        <div class="loading-title">正在加载菜谱…</div>
+        <div class="loading-subtitle">首次打开可能需要几秒钟，请稍等</div>
+      </div>
+    </div>
+
     <header class="header">
       <div class="title">做菜推荐</div>
       <div class="subtitle">输入你手头的食材，推荐能做的菜</div>
@@ -40,19 +48,32 @@
           class="card"
           @click="openRecipe(r)"
         >
-          <div class="card-top">
-            <div class="card-title">{{ r.name }}</div>
-            <div v-if="r._match" class="score">匹配 {{ r._match.matchedCount }}/{{ r._match.inputCount }}</div>
+          <div class="thumb" aria-hidden="true">
+            <img
+              v-if="getCoverUrl(r)"
+              class="thumb-img"
+              :src="getCoverUrl(r)"
+              :alt="r.name"
+              loading="lazy"
+            />
+            <div v-else class="thumb-fallback">{{ (r.name || '').slice(0, 1) }}</div>
           </div>
 
-          <div class="card-tags">
-            <span v-if="r.category" class="tag">{{ r.category }}</span>
-            <span v-if="r.difficulty" class="tag">难度 {{ r.difficulty }}</span>
-            <span v-for="t in (r.taste || []).slice(0, 4)" :key="t" class="tag">{{ t }}</span>
-          </div>
+          <div class="card-body">
+            <div class="card-top">
+              <div class="card-title">{{ r.name }}</div>
+              <div v-if="r._match" class="score">匹配 {{ r._match.matchedCount }}/{{ r._match.inputCount }}</div>
+            </div>
 
-          <div v-if="r._match && r._match.matchedNames.length" class="matched">
-            命中：{{ r._match.matchedNames.join('、') }}
+            <div class="card-tags">
+              <span v-if="r.category" class="tag">{{ r.category }}</span>
+              <span v-if="r.difficulty" class="tag">难度 {{ r.difficulty }}</span>
+              <span v-for="t in (r.taste || []).slice(0, 4)" :key="t" class="tag">{{ t }}</span>
+            </div>
+
+            <div v-if="r._match && r._match.matchedNames.length" class="matched">
+              命中：{{ r._match.matchedNames.join('、') }}
+            </div>
           </div>
         </button>
       </div>
@@ -64,6 +85,10 @@
           <button class="back" @click="closeRecipe">返回</button>
           <div class="modal-title">{{ selected.name }}</div>
           <div class="spacer"></div>
+        </div>
+
+        <div v-if="getCoverUrl(selected)" class="hero">
+          <img class="hero-img" :src="getCoverUrl(selected)" :alt="selected.name" />
         </div>
 
         <div class="section">
@@ -135,6 +160,13 @@ export default {
       } finally {
         this.loading = false
       }
+    },
+
+    getCoverUrl(r) {
+      if (!r) return ''
+      const name = String(r.name || '').trim()
+      if (!name) return ''
+      return `./images/recipes/${encodeURIComponent(name)}.jpg`
     },
 
     recommend() {
@@ -235,6 +267,54 @@ export default {
   color: #1f2937;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, "PingFang SC",
     "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+}
+
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 247, 237, 0.92);
+  backdrop-filter: blur(10px);
+}
+
+.loading-card {
+  width: min(320px, calc(100vw - 48px));
+  padding: 18px 16px;
+  border-radius: 18px;
+  background: #ffffff;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  box-shadow: 0 18px 40px rgba(17, 24, 39, 0.14);
+  text-align: center;
+}
+
+.spinner {
+  width: 36px;
+  height: 36px;
+  margin: 4px auto 10px;
+  border-radius: 999px;
+  border: 4px solid rgba(249, 115, 22, 0.18);
+  border-top-color: rgba(249, 115, 22, 0.85);
+  animation: spin 0.9s linear infinite;
+}
+
+.loading-title {
+  font-weight: 900;
+  color: #111827;
+}
+
+.loading-subtitle {
+  margin-top: 6px;
+  font-size: 12px;
+  color: rgba(31, 41, 55, 0.72);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .header {
@@ -350,16 +430,49 @@ export default {
 
 .card {
   text-align: left;
-  padding: 14px;
+  padding: 12px;
   border-radius: 16px;
   border: 1px solid rgba(17, 24, 39, 0.08);
   background: #ffffff;
   color: inherit;
   box-shadow: 0 10px 26px rgba(17, 24, 39, 0.08);
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 12px;
+  align-items: center;
 }
 
 .card:active {
   transform: scale(0.99);
+}
+
+.thumb {
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  background: rgba(249, 115, 22, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.thumb-fallback {
+  font-weight: 900;
+  color: rgba(124, 45, 18, 0.8);
+  font-size: 22px;
+}
+
+.card-body {
+  min-width: 0;
 }
 
 .card-top {
@@ -372,15 +485,19 @@ export default {
 .card-title {
   font-weight: 900;
   font-size: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .score {
   font-size: 12px;
   color: rgba(31, 41, 55, 0.75);
+  white-space: nowrap;
 }
 
 .card-tags {
-  margin-top: 10px;
+  margin-top: 8px;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -396,7 +513,7 @@ export default {
 }
 
 .matched {
-  margin-top: 10px;
+  margin-top: 8px;
   font-size: 12px;
   color: rgba(31, 41, 55, 0.70);
 }
@@ -455,6 +572,20 @@ export default {
 
 .spacer {
   width: 52px;
+}
+
+.hero {
+  width: 100%;
+  height: 180px;
+  background: rgba(249, 115, 22, 0.08);
+  border-bottom: 1px solid rgba(17, 24, 39, 0.08);
+}
+
+.hero-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .section {
