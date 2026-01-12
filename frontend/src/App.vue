@@ -15,10 +15,23 @@
 
     <header class="header">
       <div class="title">做菜推荐</div>
-      <div class="subtitle">输入你手头的食材，推荐能做的菜</div>
+      <div class="subtitle">按分类浏览或输入食材搜索</div>
 
       <div class="inputs">
-        <label class="label">食材（用逗号分隔）</label>
+        <label class="label">菜品分类</label>
+        <div class="category-selector">
+          <button
+            v-for="cat in categories"
+            :key="cat.value"
+            :class="['category-btn', { active: selectedCategory === cat.value }]"
+            @click="selectCategory(cat.value)"
+          >
+            {{ cat.label }}
+            <span class="category-count">({{ cat.count }})</span>
+          </button>
+        </div>
+
+        <label class="label" style="margin-top: 16px">食材（用逗号分隔，可选）</label>
         <input
           v-model.trim="ingredientsInput"
           class="text-input"
@@ -28,15 +41,18 @@
         />
 
         <div class="row">
-          <button class="primary" @click="recommend">推荐菜谱</button>
+          <button class="primary" @click="recommend">搜索菜谱</button>
           <button class="ghost" @click="reset">清空</button>
         </div>
 
-        <div class="hint">输入后点击“推荐菜谱”，系统会根据菜谱里的食材匹配度排序。</div>
+        <div class="hint">选择分类浏览，或输入食材后点击"搜索菜谱"进行匹配。</div>
 
         <div class="meta">
           <span v-if="loadingInitial">加载中…</span>
-          <span v-else>推荐 {{ results.length }} 道（库内共 {{ count }} 道）</span>
+          <span v-else>
+            <span v-if="selectedCategory">分类"{{ getCategoryLabel(selectedCategory) }}"共 {{ results.length }} 道</span>
+            <span v-else>显示 {{ results.length }} 道（库内共 {{ count }} 道）</span>
+          </span>
         </div>
       </div>
     </header>
@@ -44,7 +60,11 @@
     <main class="content">
       <div v-if="error" class="error">加载失败：{{ error }}</div>
 
-      <div v-else-if="!loadingInitial && results.length === 0" class="empty">请输入食材后点击“推荐菜谱”</div>
+      <div v-else-if="!loadingInitial && results.length === 0" class="empty">
+        <span v-if="selectedCategory">该分类下暂无菜谱</span>
+        <span v-else-if="ingredientsInput">未找到匹配的菜谱，请尝试其他食材</span>
+        <span v-else>请选择分类或输入食材进行搜索</span>
+      </div>
 
       <div class="list">
         <button
@@ -147,6 +167,8 @@ export default {
       ingredientsInput: '',
       results: [],
       selected: null,
+      selectedCategory: '', // 选中的分类，空字符串表示"全部"
+      categories: [], // 分类列表
       _scrollY: 0,
     }
   },
@@ -165,11 +187,49 @@ export default {
         const recipes = await resp.json()
         this.recipes = Array.isArray(recipes) ? recipes : []
         this.count = this.recipes.length
+        this.buildCategories()
+        this.loadAllRecipes()
       } catch (e) {
         this.error = e && e.message ? e.message : String(e)
       } finally {
         this.loading = false
       }
+    },
+
+    buildCategories() {
+      const categoryMap = new Map()
+      categoryMap.set('', { label: '全部', count: this.recipes.length })
+
+      for (const recipe of this.recipes) {
+        const cat = recipe.category || '未分类'
+        if (!categoryMap.has(cat)) {
+          categoryMap.set(cat, { label: cat, count: 0 })
+        }
+        categoryMap.get(cat).count++
+      }
+
+      this.categories = Array.from(categoryMap.entries())
+        .map(([value, data]) => ({ value, ...data }))
+        .sort((a, b) => {
+          if (a.value === '') return -1
+          if (b.value === '') return 1
+          return b.count - a.count
+        })
+    },
+
+    getCategoryLabel(value) {
+      const cat = this.categories.find((c) => c.value === value)
+      return cat ? cat.label : value || '全部'
+    },
+
+    selectCategory(category) {
+      this.selectedCategory = category === this.selectedCategory ? '' : category
+      this.recommend()
+    },
+
+    loadAllRecipes() {
+      // 初始加载时显示所有菜谱
+      this.results = this.recipes.map((r) => ({ ...r }))
     },
 
     getCoverUrl(r) {
@@ -180,15 +240,22 @@ export default {
     },
 
     recommend() {
-      const inputTokens = parseIngredientTokens(this.ingredientsInput)
-      const inputSet = new Set(inputTokens)
+      // 先按分类筛选
+      let filtered = this.recipes
+      if (this.selectedCategory) {
+        filtered = this.recipes.filter((r) => (r.category || '未分类') === this.selectedCategory)
+      }
 
+      // 如果没有输入食材，直接显示分类结果
+      const inputTokens = parseIngredientTokens(this.ingredientsInput)
       if (inputTokens.length === 0) {
-        this.results = []
+        this.results = filtered.map((r) => ({ ...r }))
         return
       }
 
-      const scored = this.recipes
+      // 如果有食材输入，进行匹配
+      const inputSet = new Set(inputTokens)
+      const scored = filtered
         .map((r) => {
           const names = recipeIngredientText(r)
           let matchedCount = 0
@@ -227,7 +294,8 @@ export default {
 
     reset() {
       this.ingredientsInput = ''
-      this.results = []
+      this.selectedCategory = ''
+      this.loadAllRecipes()
       this.closeRecipe()
     },
 
@@ -424,6 +492,48 @@ export default {
   font-size: 12px;
   color: rgba(31, 41, 55, 0.80);
   margin-bottom: 6px;
+}
+
+.category-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.category-btn {
+  padding: 8px 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(17, 24, 39, 0.15);
+  background: rgba(255, 255, 255, 0.9);
+  color: rgba(31, 41, 55, 0.85);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.category-btn:hover {
+  background: rgba(249, 115, 22, 0.08);
+  border-color: rgba(249, 115, 22, 0.3);
+  color: rgba(124, 45, 18, 0.9);
+}
+
+.category-btn.active {
+  background: linear-gradient(180deg, rgba(249, 115, 22, 0.22), rgba(249, 115, 22, 0.14));
+  border-color: rgba(249, 115, 22, 0.4);
+  color: #7c2d12;
+  font-weight: 800;
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.15);
+}
+
+.category-count {
+  font-size: 11px;
+  opacity: 0.7;
+  font-weight: 500;
 }
 
 .text-input {
