@@ -2,9 +2,14 @@
   <div class="page">
     <div v-if="loading" class="loading-overlay" role="status" aria-live="polite">
       <div class="loading-card">
-        <div class="spinner" aria-hidden="true"></div>
-        <div class="loading-title">正在加载菜谱…</div>
-        <div class="loading-subtitle">首次打开可能需要几秒钟，请稍等</div>
+        <div class="spinner-large" aria-hidden="true">
+          <div class="spinner-ring"></div>
+          <div class="spinner-ring"></div>
+          <div class="spinner-ring"></div>
+        </div>
+        <div class="loading-title">正在加载菜谱</div>
+        <div class="loading-subtitle">首次加载可能需要几秒钟，请稍候…</div>
+        <div class="loading-hint">数据量较大，正在处理中</div>
       </div>
     </div>
 
@@ -30,7 +35,7 @@
         <div class="hint">输入后点击“推荐菜谱”，系统会根据菜谱里的食材匹配度排序。</div>
 
         <div class="meta">
-          <span v-if="loading">加载中…</span>
+          <span v-if="loadingInitial">加载中…</span>
           <span v-else>推荐 {{ results.length }} 道（库内共 {{ count }} 道）</span>
         </div>
       </div>
@@ -39,7 +44,7 @@
     <main class="content">
       <div v-if="error" class="error">加载失败：{{ error }}</div>
 
-      <div v-else-if="!loading && results.length === 0" class="empty">请输入食材后点击“推荐菜谱”</div>
+      <div v-else-if="!loadingInitial && results.length === 0" class="empty">请输入食材后点击“推荐菜谱”</div>
 
       <div class="list">
         <button
@@ -135,7 +140,7 @@ function recipeIngredientText(recipe) {
 export default {
   data() {
     return {
-      loading: false,
+      loading: true, // 初始默认为加载中
       error: '',
       count: 0,
       recipes: [],
@@ -144,6 +149,11 @@ export default {
       selected: null,
       _scrollY: 0,
     }
+  },
+  computed: {
+    loadingInitial() {
+      return this.loading && this.recipes.length === 0
+    },
   },
   methods: {
     async load() {
@@ -272,48 +282,114 @@ export default {
 .loading-overlay {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  z-index: 10000;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 247, 237, 0.92);
-  backdrop-filter: blur(10px);
+  background: linear-gradient(135deg, rgba(255, 247, 237, 0.98) 0%, rgba(255, 255, 255, 0.98) 100%);
+  backdrop-filter: blur(12px);
+  animation: fadeIn 0.3s ease-in;
 }
 
 .loading-card {
-  width: min(320px, calc(100vw - 48px));
-  padding: 18px 16px;
-  border-radius: 18px;
+  width: min(380px, calc(100vw - 48px));
+  padding: 48px 32px;
+  border-radius: 24px;
   background: #ffffff;
-  border: 1px solid rgba(17, 24, 39, 0.08);
-  box-shadow: 0 18px 40px rgba(17, 24, 39, 0.14);
+  border: 2px solid rgba(249, 115, 22, 0.15);
+  box-shadow: 0 24px 60px rgba(17, 24, 39, 0.2), 0 0 0 1px rgba(249, 115, 22, 0.05);
   text-align: center;
+  animation: slideUp 0.4s ease-out;
 }
 
-.spinner {
-  width: 36px;
-  height: 36px;
-  margin: 4px auto 10px;
-  border-radius: 999px;
-  border: 4px solid rgba(249, 115, 22, 0.18);
-  border-top-color: rgba(249, 115, 22, 0.85);
-  animation: spin 0.9s linear infinite;
+.spinner-large {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 24px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spinner-ring {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 4px solid transparent;
+  border-top-color: rgba(249, 115, 22, 0.9);
+  animation: spin 1.2s linear infinite;
+}
+
+.spinner-ring:nth-child(1) {
+  width: 80px;
+  height: 80px;
+  border-width: 4px;
+  animation-duration: 1.2s;
+}
+
+.spinner-ring:nth-child(2) {
+  width: 60px;
+  height: 60px;
+  border-width: 3px;
+  border-top-color: rgba(249, 115, 22, 0.6);
+  animation-duration: 1s;
+  animation-direction: reverse;
+}
+
+.spinner-ring:nth-child(3) {
+  width: 40px;
+  height: 40px;
+  border-width: 2px;
+  border-top-color: rgba(249, 115, 22, 0.4);
+  animation-duration: 0.8s;
 }
 
 .loading-title {
+  font-size: 22px;
   font-weight: 900;
   color: #111827;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
 }
 
 .loading-subtitle {
-  margin-top: 6px;
+  font-size: 14px;
+  color: rgba(31, 41, 55, 0.75);
+  margin-bottom: 4px;
+}
+
+.loading-hint {
+  margin-top: 12px;
   font-size: 12px;
-  color: rgba(31, 41, 55, 0.72);
+  color: rgba(249, 115, 22, 0.85);
+  font-weight: 600;
 }
 
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
